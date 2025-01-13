@@ -7,7 +7,7 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/sprout_trading?style=social)](https://x.com/sprout_trading)
 [![Website](https://img.shields.io/badge/Website-sprout.trading-blue)](https://sprout.trading/)
 
-A decentralized platform for nurturing projects through community collaboration. Sprout.trading enables users to contribute essential resources like water, fertilizer, and sunshine to Sprout v1, fostering growth through an innovative "gardening" mechanism. The platform features a desktop application for resource management, a launchpad for new projects, and a farm system for tracking and trading Sprout-launched tokens. Built with Node.js and PostgreSQL, this repository contains the backend infrastructure that powers the Sprout Trading ecosystem.
+A decentralized platform for nurturing projects through community collaboration. Sprout.trading enables users to contribute essential resources like water, fertilizer, and sunshine to Sprout v1, fostering growth through an innovative gardening mechanism. The platform features a desktop application for resource management, a launchpad for new projects, and a farm system for tracking and trading Sprout-launched tokens. Built with Node.js and PostgreSQL, this repository contains the backend infrastructure that powers the Sprout Trading ecosystem.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/f4411c76-5871-4f07-a8b2-14547d0a8c2d" alt="banner">
