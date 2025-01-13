@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: sprout_db
+    volumes:
+      - ./current_db:/var/lib/postgresql
+    environment:
+      POSTGRES_USER: "example-user"
+      POSTGRES_DB: "example-db"
+      POSTGRES_PASSWORD: "p4ssw0rdsExample!"
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh -c 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 3
