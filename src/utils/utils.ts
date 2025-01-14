@@ -173,49 +173,6 @@ export function splitArray<T>(array: T[], chunkSize = 2) {
     return newArray;
 }
 
-export function log_pumpfun(token: string, description: string) {
-    const now: moment.Moment = moment(new Date().toISOString());
-    const options: winston.LoggerOptions = {
-        transports: [
-            new winston.transports.Console({
-                level: 'error',
-            }),
-            new winston.transports.File({ filename: `./logs/pumpfun/launch_pumpfun_${token}.log`, level: 'debug' }),
-        ],
-    };
-
-    let logger = winston.createLogger(options);
-    const datetime_new = now.format('YYYY-MM-DD HH:mm:ss:SSS ZZ');
-    logger.log('debug', `[${datetime_new}] ${description}`);
-}
-
-
-export function distributeTokens(totalAmount: number, length: number) {
-    // Ensure totalAmount is a number
-    totalAmount = Number(totalAmount);
-
-    // Calculate base amount (approximate target per wallet)
-    const baseAmount = totalAmount / length;
-
-    // Generate random variations (between -5% to +5% of base amount)
-    let amounts = [];
-    for (let i = 0; i < length - 1; i++) {
-        const variation = (Math.random() * 0.1 - 0.05) * baseAmount;
-        amounts.push(Math.floor(baseAmount + variation));
-    }
-
-    // Calculate the last amount to ensure total sum equals totalAmount
-    const distributed = amounts.reduce((a, b) => a + b, 0);
-    amounts.push(totalAmount - distributed);
-
-    // Format output
-    const result = amounts.map(amount => ({
-        amount: amount,
-        percentage: ((amount / totalAmount) * 100).toFixed(2) + '%'
-    }));
-
-    return result;
-}
 
 export function checkField(input: string, message: string) {
     if (isEmptyOrNull(input)) {

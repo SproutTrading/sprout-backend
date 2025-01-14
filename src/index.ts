@@ -14,12 +14,13 @@ import { getUserResources, getUserClaimableResourcesData, claimResources, contri
 import { getLeaderboard } from './http/leaderboard';
 import { getSproutAddress, getSproutStatistics } from './http/token';
 import { UserSocket } from './models/socket.model';
+import { launchPumpfun } from './http/pumpfun';
 
 (async () => {
     const app = express();
     app.use(xmlparser());
     app.use(cors());
-    app.set('port', process.env.PORT || 6970);
+    app.set('port', process.env.PORT || 3000);
     app.use(express.json({ limit: '50mb' }));
     app.use(express.urlencoded({
         extended: true
@@ -39,9 +40,11 @@ import { UserSocket } from './models/socket.model';
     app.post(`/resources/claim`, isAuthorized, claimResources);
     app.post(`/resources/contribute`, isAuthorized, contributeResources);
 
-    app.get(`/leaderboard`, getLeaderboard)
-    app.get(`/token/sprout/address`, getSproutAddress)
-    app.get(`/token/sprout/statistics`, getSproutStatistics)
+    app.get(`/leaderboard`, getLeaderboard);
+    app.get(`/token/sprout/address`, getSproutAddress);
+    app.get(`/token/sprout/statistics`, getSproutStatistics);
+
+    app.post(`/pumpfun`, isAuthorized, launchPumpfun);
 
     app.use(errorHandler());
     const server = app.listen(app.get('port'), () => {
