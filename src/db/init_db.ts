@@ -1,9 +1,10 @@
-import { db_pool } from "./constants";
+import { db_pool } from "../constants";
 
 let queries = `
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS users_inventory CASCADE;
 DROP TABLE IF EXISTS users_claims CASCADE;
+DROP TABLE IF EXISTS pumpfun_contracts CASCADE;
 CREATE TABLE IF NOT EXISTS "users" (
     "id" SERIAL,
     "group_id" int NOT NULL,
@@ -33,6 +34,16 @@ CREATE TABLE IF NOT EXISTS "users_inventory" (
 CREATE TABLE IF NOT EXISTS "users_claims" (
     "id" SERIAL,
     "user_id" int NOT NULL,
+    "date_added" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("id"),
+    CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS "pumpfun_contracts" (
+    "id" SERIAL,
+    "user_id" int,
+    "public_key" TEXT NOT NULL,
+    "private_key" TEXT NOT NULL,
+    "launched" boolean DEFAULT false NOT NULL,
     "date_added" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY ("id"),
     CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE

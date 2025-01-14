@@ -19,7 +19,7 @@ export async function check_username(username: string): Promise<number> {
     const values = [username];
     const result = await db_pool.query(query, values);
     return result.rows.length > 0 ? +(result.rows[0].count as number) : 0;
-} 
+}
 
 export async function update_user_nonce(public_key: string, nonce: string) {
     const query = `UPDATE users SET nonce = $2 WHERE public_key = $1`;
@@ -153,3 +153,29 @@ order by contributions DESC, date_contributed ASC
     return result.rows;
 }
 
+export async function insert_pumpfun_wallet(public_key: string, private_key: string) {
+    const query = 'INSERT INTO pumpfun_contracts(public_key, private_key) VALUES($1, $2) RETURNING *'
+    const values = [public_key, private_key];
+    const result = await db_pool.query(query, values);
+    return result && result.rows.length > 0 ? result.rows[0] : null
+}
+
+export async function get_pumpfun_contract() {
+    const query = `SELECT * FROM pumpfun_contracts WHERE user_id IS NULL ORDER BY id ASC LIMIT 1`;
+    const result = await db_pool.query(query);
+    return result.rows && result.rows.length > 0 ? result.rows[0] : null;
+}
+
+export async function update_pumpfun_contract_user(id: number, user_id: number) {
+    const query = `UPDATE pumpfun_contracts SET user_id = $2 WHERE id = $1`;
+    const values = [id, user_id];
+    const result = await db_pool.query(query, values);
+    return result && result.rowCount && result.rowCount > 0 ? true : false;
+}
+
+export async function update_pumpfun_contract_launch(id: number, launched: boolean) {
+    const query = `UPDATE pumpfun_contracts SET launched = $2 WHERE id = $1`;
+    const values = [id, launched];
+    const result = await db_pool.query(query, values);
+    return result && result.rowCount && result.rowCount > 0 ? true : false;
+}

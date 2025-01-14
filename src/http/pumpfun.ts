@@ -41,6 +41,7 @@ export const launchPumpfun = async (req: Request, res: Response) => {
         }
 
         let payload: PumpfunPayload = {
+            id,
             name,
             symbol,
             description,
@@ -50,8 +51,7 @@ export const launchPumpfun = async (req: Request, res: Response) => {
             twitter,
             private_key,
             tip,
-            value,
-            pumpfun_pk: bs58.encode(Keypair.generate().secretKey)
+            value
         }
         var child = fork('dist/api/pumpfun_builder.js');
         child.send(JSON.stringify(payload));

@@ -10,8 +10,10 @@ import { PumpfunToken } from './pumpfun/pumpfun_instructions';
 import { buyRaydium } from './raydium/raydium_instructions';
 import { getGlobalAccount } from './pumpfun/globalAccount';
 import { fetchSolanaPrice } from './coingecko';
+import { get_pumpfun_contract, update_pumpfun_contract_launch, update_pumpfun_contract_user } from '../db';
 
 export type PumpfunPayload = {
+    id: number,
     name: string,
     symbol: string,
     description: string,
@@ -21,8 +23,7 @@ export type PumpfunPayload = {
     twitter: string,
     private_key: string,
     tip: string,
-    value: string,
-    pumpfun_pk: string
+    value: string
 }
 
 export const calculateWithSlippageBuy = (amount: bigint, basisPoints: bigint) => {
