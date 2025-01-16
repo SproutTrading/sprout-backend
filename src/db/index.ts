@@ -186,7 +186,13 @@ export async function update_pumpfun_contract_launch(id: number, launched: boole
     return result && result.rowCount && result.rowCount > 0 ? true : false;
 }
 
-export async function get_pumpfun_launched_contracts() {
+export async function get_count_pumpfun_launched_contracts() {
+    const query = `SELECT count(*) FROM pumpfun_contracts WHERE launched = true`;
+    const result = await db_pool.query(query);
+    return result.rows && result.rows.length > 0 ? result.rows[0].count : 0;
+}
+
+export async function get_pumpfun_launched_contracts(offset: number, limit: number) {
     const query = `SELECT 
 	pc.id, 
 	public_key,
@@ -200,7 +206,8 @@ LEFT JOIN users_inventory ui
 ON pc.id = ui.pumpfun_contract_id
 WHERE launched = true
 GROUP BY pc.id
-ORDER BY total DESC, date_contributed ASC`;
-    const result = await db_pool.query(query);
+ORDER BY total DESC, date_contributed ASC, pc.id ASC
+LIMIT $2 OFFSET $1`;
+    const result = await db_pool.query(query, [offset, limit]);
     return result.rows;
 }

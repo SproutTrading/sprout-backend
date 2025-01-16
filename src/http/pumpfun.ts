@@ -3,11 +3,11 @@ dotenv.config();
 
 import { Request, Response } from 'express';
 import { build_response } from '../utils/http_helper';
-import { checkField } from '../utils/utils';
+import { checkField, isEmptyOrNull } from '../utils/utils';
 import { fork } from 'node:child_process';
 import { PumpfunPayload } from '../api/pumpfun_builder';
 import io_instance from '../websocket';
-import { get_pumpfun_launched_contracts } from '../db';
+import { get_count_pumpfun_launched_contracts, get_pumpfun_launched_contracts } from '../db';
 import { getTokenData } from '../api/token_data';
 
 export const launchPumpfun = async (req: Request, res: Response) => {
@@ -87,25 +87,33 @@ export const launchPumpfun = async (req: Request, res: Response) => {
 
 export const getPumfunTokens = async (req: Request, res: Response) => {
     try {
-        let pumpfun_contracts: { id: number, public_key: string, water: number, fertilizer: number, sunshine: number, total: number }[] = await get_pumpfun_launched_contracts();
-        let token_data = [];
-        for await (let pumpfun_contract of pumpfun_contracts) {
-            let tokenData = await getTokenData(pumpfun_contract.public_key, true);
-            if (tokenData && tokenData.ipfs && tokenData.token) {
+        let page = req.query && req.query.page && !isNaN(+req.query.page) && Number.isInteger(+req.query.page) ? +req.query.page : 1;
+        let limit = 15;
+        let offset = (page - 1) * limit;
+        let count = await get_count_pumpfun_launched_contracts();
+        let pumpfun_contracts: { id: number, public_key: string, water: number, fertilizer: number, sunshine: number, total: number }[] = await get_pumpfun_launched_contracts(offset, limit);
+        let token_data = (await Promise.allSettled(pumpfun_contracts.map(pumpfun_contract => getTokenData(pumpfun_contract.public_key, true)))).map((response, idx) => {
+            if (response.status === 'fulfilled' && response.value && response.value.ipfs && response.value.token) {
                 let finalTokenData = {
-                    ...tokenData,
+                    ...response.value,
                     resources: {
-                        ...pumpfun_contract,
-                        water: +pumpfun_contract.water,
-                        fertilizer: +pumpfun_contract.fertilizer,
-                        sunshine: +pumpfun_contract.sunshine,
-                        total: +pumpfun_contract.total
+                        ...pumpfun_contracts[idx],
+                        water: +pumpfun_contracts[idx].water,
+                        fertilizer: +pumpfun_contracts[idx].fertilizer,
+                        sunshine: +pumpfun_contracts[idx].sunshine,
+                        total: +pumpfun_contracts[idx].total
                     }
                 }
-                token_data.push(finalTokenData)
+                return finalTokenData;
+            } else {
+                return null
             }
-        }
-        return res.status(200).json(build_response(true, token_data));
+        }).filter(x => !isEmptyOrNull(x));
+        return res.status(200).json(build_response(true, {
+            token_data,
+            count,
+            page,
+        }));
     } catch (err) {
         return res.status(200).json(build_response(false, null, err as string));
     }
