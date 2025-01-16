@@ -121,7 +121,7 @@ export async function get_resources_by_epoch() {
 	count(CASE WHEN i.object_id = 1 then 1 end) AS water,
 	count(CASE WHEN i.object_id = 2 then 1 end) AS fertilizer,
 	count(CASE WHEN i.object_id = 3 then 1 end) AS sunshine
-from users_inventory as i where contributed = true pumpfun_contract_id IS NULL
+from users_inventory as i where contributed = true AND pumpfun_contract_id IS NULL
 group by i.epoch
 order by i.epoch asc
 `;
