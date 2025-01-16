@@ -1,7 +1,7 @@
 import BN from "bn.js";
 import { Liquidity, SPL_ACCOUNT_LAYOUT, TOKEN_PROGRAM_ID, Token, TokenAccount, TokenAmount } from "@raydium-io/raydium-sdk";
 import { Connection, LAMPORTS_PER_SOL, PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { getSolanaOptimalPool } from "./pool";
+import { getSolanaOptimalPool, SolanaPool } from "../pool";
 
 async function getWalletTokenAccount(connection: Connection, wallet: PublicKey): Promise<TokenAccount[]> {
     const walletTokenAccount = await connection.getTokenAccountsByOwner(wallet, {
@@ -14,8 +14,10 @@ async function getWalletTokenAccount(connection: Connection, wallet: PublicKey):
     }));
 }
 
-export async function buyRaydium(connection: Connection, payer: PublicKey, receiver: PublicKey, input: number, token: string): Promise<{ instructions: TransactionInstruction[] }> {
-    let pool = await getSolanaOptimalPool(connection, token);
+export async function buyRaydium(connection: Connection, payer: PublicKey, receiver: PublicKey, input: number, token: string, pool?: SolanaPool): Promise<{ instructions: TransactionInstruction[] }> {
+    if (!pool) {
+        pool = await getSolanaOptimalPool(connection, token);
+    }
     if (!pool || !pool.poolKeys) {
         throw new Error("Pool not found");
     }

@@ -4,7 +4,7 @@ dotenv.config();
 import { Request, Response } from 'express';
 import { build_response } from '../utils/http_helper';
 import { logDetails } from '../utils/utils';
-import axios from 'axios';
+import { getTokenData } from '../api/token_data';
 
 export const getSproutAddress = async (req: Request, res: Response) => {
     try {
@@ -20,13 +20,9 @@ export const getSproutAddress = async (req: Request, res: Response) => {
 
 export const getSproutStatistics = async (req: Request, res: Response) => {
     try {
-        let { data: { data, success } }: any = await axios.get(`https://pro-api.solscan.io/v2.0/token/meta?address=${process.env.TOKEN_ADDRESS!}`, {
-            headers: {
-                "token": process.env.SOLSCAN_API_KEY!
-            }
-        }); 
-        if (success) {
-            return res.status(200).json(build_response(true, data));
+        let tokenData = await getTokenData(process.env.TOKEN_ADDRESS!, false);
+        if (tokenData && tokenData.token) {
+            return res.status(200).json(build_response(true, tokenData.token));
         } else {
             return res.status(200).json(build_response(false, null, "Failed to get token details"));
         }

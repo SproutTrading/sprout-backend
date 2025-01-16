@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { Request, Response } from 'express';
-import { get_user_resources, get_user_claims, insert_user_claim, insert_user_inventory, get_first_resource, update_resource, get_resources_by_epoch, get_user_rank } from '../db';
+import { get_user_resources, get_user_claims, insert_user_claim, insert_user_inventory, get_first_resource, update_resource, get_resources_by_epoch, get_user_rank, get_pumpfun_contract_by_id } from '../db';
 import { GameObjects } from '../models/enums';
 import { build_response } from '../utils/http_helper';
 import { checkField, getTimeWithOffset, logDetails } from '../utils/utils';
@@ -133,17 +133,27 @@ export const claimResources = async (req: Request, res: Response) => {
 
 export const contributeResources = async (req: Request, res: Response) => {
     try {
-        let { object_id } = req.body;
+        let { tokenId, object_id } = req.body;
         checkField(object_id, "Object id cannot be empty!");
         if (isNaN(object_id) || object_id < 1 || object_id > 3) {
             throw new Error("Wrong object id!");
         }
-        let id = res.locals['authorizedUser'].id;
-        const user_resources = await get_first_resource(id, object_id);
+        let user_id = res.locals['authorizedUser'].id;
+
+        if (tokenId) {
+            if (isNaN(tokenId) || tokenId < 1) {
+                throw new Error("Wrong token id!");
+            }
+            let foundContract = await get_pumpfun_contract_by_id(tokenId);
+            if (!foundContract) {
+                throw new Error("Pumpfun contract not found!");
+            }
+        }
+        const user_resources = await get_first_resource(user_id, object_id);
         if (user_resources.length > 0) {
             let connection = new Connection(process.env.NODE_SOLANA_HTTP!, 'confirmed');
             let epoch = (await connection.getEpochInfo()).epoch;
-            let updated = await update_resource(id, user_resources[0].id, true, epoch, new Date());
+            let updated = await update_resource(user_id, user_resources[0].id, true, epoch, new Date(), tokenId);
             if (!updated) {
                 throw new Error(`Failed to update item`);
             }

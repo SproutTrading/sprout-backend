@@ -7,12 +7,11 @@ import { default as IDL } from "../idl/pumpfun.json";
 import { createAssociatedTokenAccountInstruction, getAccount, getAssociatedTokenAddress } from '@solana/spl-token';
 import { PublicKey, Keypair, Connection, Commitment, Transaction, Finality } from '@solana/web3.js';
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
+import { BondingCurveAccount } from './bondingCurve';
 
 const MPL_TOKEN_METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 const METADATA_SEED = "metadata";
 const BONDING_CURVE_SEED = "bonding-curve";
-export const DEFAULT_COMMITMENT: Commitment = "finalized";
-export const DEFAULT_FINALITY: Finality = "finalized";
 
 export class PumpfunToken {
     public program: Program<PumpFun>;
@@ -28,6 +27,17 @@ export class PumpfunToken {
 
     getBondingCurvePDA(mint: PublicKey) {
         return PublicKey.findProgramAddressSync([Buffer.from(BONDING_CURVE_SEED), mint.toBuffer()], this.program.programId)[0];
+    }
+
+    async getBondingCurveAccount(mint: PublicKey) {
+        const tokenAccount = await this.connection.getAccountInfo(
+            this.getBondingCurvePDA(mint),
+            'finalized'
+        );
+        if (!tokenAccount) {
+            return null;
+        }
+        return BondingCurveAccount.fromBuffer(tokenAccount!.data);
     }
 
     async getCreateInstructions(creator: PublicKey, name: string, symbol: string, uri: string) {
@@ -66,8 +76,7 @@ export class PumpfunToken {
         mint: PublicKey,
         feeRecipient: PublicKey,
         amount: bigint,
-        solAmount: bigint,
-        commitment: Commitment = DEFAULT_COMMITMENT
+        solAmount: bigint
     ) {
         const associatedBondingCurve = await getAssociatedTokenAddress(
             mint,
@@ -79,7 +88,7 @@ export class PumpfunToken {
 
         let transaction = new Transaction();
         try {
-            await getAccount(this.connection, associatedUser, commitment);
+            await getAccount(this.connection, associatedUser, 'finalized');
         } catch (e) {
             transaction.add(
                 createAssociatedTokenAccountInstruction(

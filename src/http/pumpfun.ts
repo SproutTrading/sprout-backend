@@ -1,11 +1,14 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { Request, Response } from 'express';
 import { build_response } from '../utils/http_helper';
-import { checkField, logDetails } from '../utils/utils';
+import { checkField } from '../utils/utils';
 import { fork } from 'node:child_process';
 import { PumpfunPayload } from '../api/pumpfun_builder';
-import { Keypair } from '@solana/web3.js';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import io_instance from '../websocket';
+import { get_pumpfun_launched_contracts } from '../db';
+import { getTokenData } from '../api/token_data';
 
 export const launchPumpfun = async (req: Request, res: Response) => {
     let id = res.locals['authorizedUser'].id;
@@ -78,6 +81,32 @@ export const launchPumpfun = async (req: Request, res: Response) => {
             ok: false,
             message: err as string
         });
+        return res.status(200).json(build_response(false, null, err as string));
+    }
+}
+
+export const getPumfunTokens = async (req: Request, res: Response) => {
+    try {
+        let pumpfun_contracts: { id: number, public_key: string, water: number, fertilizer: number, sunshine: number, total: number }[] = await get_pumpfun_launched_contracts();
+        let token_data = [];
+        for await (let pumpfun_contract of pumpfun_contracts) {
+            let tokenData = await getTokenData(pumpfun_contract.public_key, true);
+            if (tokenData && tokenData.ipfs && tokenData.token) {
+                let finalTokenData = {
+                    ...tokenData,
+                    resources: {
+                        ...pumpfun_contract,
+                        water: +pumpfun_contract.water,
+                        fertilizer: +pumpfun_contract.fertilizer,
+                        sunshine: +pumpfun_contract.sunshine,
+                        total: +pumpfun_contract.total
+                    }
+                }
+                token_data.push(finalTokenData)
+            }
+        }
+        return res.status(200).json(build_response(true, token_data));
+    } catch (err) {
         return res.status(200).json(build_response(false, null, err as string));
     }
 }

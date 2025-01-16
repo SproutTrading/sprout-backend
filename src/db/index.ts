@@ -62,9 +62,9 @@ export async function insert_user_claim(user_id: number) {
     return result && result.rows.length > 0 ? result.rows[0] : null
 }
 
-export async function insert_user_inventory(user_id: number, object_id: number, contributed: boolean = false, epoch?: number, date_contributed?: Date) {
-    const query = 'INSERT INTO users_inventory(user_id, object_id, contributed, epoch, date_contributed) VALUES($1, $2, $3, $4, $5) RETURNING *'
-    const values = [user_id, object_id, contributed, epoch, date_contributed];
+export async function insert_user_inventory(user_id: number, object_id: number, contributed: boolean = false, epoch?: number, date_contributed?: Date, pumpfun_contract_id?: number) {
+    const query = 'INSERT INTO users_inventory(user_id, object_id, contributed, epoch, date_contributed, pumpfun_contract_id) VALUES($1, $2, $3, $4, $5, $6) RETURNING *'
+    const values = [user_id, object_id, contributed, epoch, date_contributed, pumpfun_contract_id];
     const result = await db_pool.query(query, values);
     return result && result.rows.length > 0 ? result.rows[0] : null
 }
@@ -79,7 +79,7 @@ count(i.object_id) as contributions,
   public_key,
   display_name
 from users u join users_inventory i on u.id = i.user_id 
-where i.contributed = true 
+where i.contributed = true AND i.pumpfun_contract_id IS NULL
 group by i.user_id, public_key, display_name
 ) left JOIN users_inventory ui on ui.id = object_id
 order by contributions DESC, date_contributed ASC
@@ -90,13 +90,13 @@ limit 50`;
 
 
 export async function get_resources_contributions() {
-    const query = `SELECT count(i.object_id), i.object_id from users u join users_inventory i on u.id = i.user_id where i.contributed = true group by i.object_id;`;
+    const query = `SELECT count(i.object_id), i.object_id from users u join users_inventory i on u.id = i.user_id where i.contributed = true AND i.pumpfun_contract_id IS NULL group by i.object_id;`;
     const result = await db_pool.query(query);
     return result.rows;
 }
 
 export async function get_total_contributors() {
-    const query = `SELECT count(DISTINCT (u.id)) from users u join users_inventory i on u.id = i.user_id where i.contributed = true`;
+    const query = `SELECT count(DISTINCT (u.id)) from users u join users_inventory i on u.id = i.user_id where i.contributed = true AND i.pumpfun_contract_id IS NULL`;
     const result = await db_pool.query(query);
     return result.rows;
 }
@@ -108,9 +108,9 @@ export async function get_first_resource(user_id: number, object_id: number) {
     return result.rows;
 }
 
-export async function update_resource(user_id: number, id: number, contributed: boolean, epoch: number, date_contributed: Date) {
-    const query = `UPDATE users_inventory SET contributed = $3, epoch = $4, date_contributed = $5 WHERE user_id = $1 AND id = $2`;
-    const values = [user_id, id, contributed, epoch, date_contributed];
+export async function update_resource(user_id: number, id: number, contributed: boolean, epoch: number, date_contributed: Date, tokenId: number) {
+    const query = `UPDATE users_inventory SET contributed = $3, epoch = $4, date_contributed = $5, pumpfun_contract_id = $6 WHERE user_id = $1 AND id = $2`;
+    const values = [user_id, id, contributed, epoch, date_contributed, tokenId];
     const result = await db_pool.query(query, values);
     return result && result.rowCount && result.rowCount > 0 ? true : false;
 }
@@ -121,7 +121,7 @@ export async function get_resources_by_epoch() {
 	count(CASE WHEN i.object_id = 1 then 1 end) AS water,
 	count(CASE WHEN i.object_id = 2 then 1 end) AS fertilizer,
 	count(CASE WHEN i.object_id = 3 then 1 end) AS sunshine
-from users_inventory as i where contributed = true
+from users_inventory as i where contributed = true pumpfun_contract_id IS NULL
 group by i.epoch
 order by i.epoch asc
 `;
@@ -143,7 +143,7 @@ count(i.object_id) as contributions,
   public_key,
   display_name
 from users u join users_inventory i on u.id = i.user_id 
-where i.contributed = true
+where i.contributed = true AND i.pumpfun_contract_id IS NULL
 group by i.user_id, public_key, display_name
 ) JOIN users_inventory ui on ui.id = object_id
 order by contributions DESC, date_contributed ASC
@@ -166,6 +166,12 @@ export async function get_pumpfun_contract() {
     return result.rows && result.rows.length > 0 ? result.rows[0] : null;
 }
 
+export async function get_pumpfun_contract_by_id(id: number) {
+    const query = `SELECT * FROM pumpfun_contracts WHERE id = $1`;
+    const result = await db_pool.query(query, [id]);
+    return result.rows && result.rows.length > 0 ? result.rows[0] : null;
+}
+
 export async function update_pumpfun_contract_user(id: number, user_id: number) {
     const query = `UPDATE pumpfun_contracts SET user_id = $2 WHERE id = $1`;
     const values = [id, user_id];
@@ -178,4 +184,23 @@ export async function update_pumpfun_contract_launch(id: number, launched: boole
     const values = [id, launched];
     const result = await db_pool.query(query, values);
     return result && result.rowCount && result.rowCount > 0 ? true : false;
+}
+
+export async function get_pumpfun_launched_contracts() {
+    const query = `SELECT 
+	pc.id, 
+	public_key,
+	count(CASE WHEN ui.object_id = 1 then 1 end) AS water,
+	count(CASE WHEN ui.object_id = 2 then 1 end) AS fertilizer,
+	count(CASE WHEN ui.object_id = 3 then 1 end) AS sunshine,
+	count(ui.object_id) total,
+	MIN(date_contributed) as date_contributed
+FROM pumpfun_contracts pc
+LEFT JOIN users_inventory ui 
+ON pc.id = ui.pumpfun_contract_id
+WHERE launched = true
+GROUP BY pc.id
+ORDER BY total DESC, date_contributed ASC`;
+    const result = await db_pool.query(query);
+    return result.rows;
 }

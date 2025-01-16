@@ -2,12 +2,17 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { LIQUIDITY_STATE_LAYOUT_V4, Liquidity, LiquidityPoolKeys, LiquidityPoolKeysV4, MARKET_STATE_LAYOUT_V3, Market } from "@raydium-io/raydium-sdk";
-import { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
-import { isFulfilled } from "../../utils/utils";
+import { AccountInfo, Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { isFulfilled } from "../utils/utils";
+import { PumpfunToken } from './pumpfun/pumpfun_instructions';
+import { Keypair } from '@solana/web3.js';
+import { calculateWithSlippageBuy } from './pumpfun_builder';
+import { getGlobalAccount } from './pumpfun/globalAccount';
+import { buyRaydium } from './raydium/raydium_instructions';
 
 const RAYDIUM_LIQUIDITY_POOL_V4_ADDRESS = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
 
-type SolanaPool = {
+export type SolanaPool = {
     id: string | null,
     quoteMint: string,
     baseMint: string,
@@ -45,6 +50,34 @@ async function getRaydiumLiquidityPools(connection: Connection, baseMint: string
 export async function getSolanaOptimalPool(connection: Connection, token: string) {
     let quoteMint = new PublicKey(`So11111111111111111111111111111111111111112`);
     let data: SolanaPool[] = [];
+
+    try {
+        let pumpfunToken = new PumpfunToken(Keypair.generate());
+        let bondingCurveAccount = await pumpfunToken.getBondingCurveAccount(new PublicKey(token));
+
+        if (bondingCurveAccount) {
+            let price = 0;
+            try {
+                price = Number(bondingCurveAccount.getSellPrice(BigInt(1 * 1e6), BigInt(0))) / LAMPORTS_PER_SOL;
+            } catch (err) {
+            }
+            data.push({
+                id: null,
+                quoteMint: quoteMint.toString(),
+                baseMint: new PublicKey(token).toString(),
+                quoteDecimals: 9,
+                baseDecimals: 6,
+                solBalance: 0,
+                tokensBalance: 0,
+                price,
+                poolKeys: null,
+                type: 'pumpfun',
+                complete: bondingCurveAccount.complete
+            })
+        }
+    } catch (err) {
+        console.log(`Error retrieve pumpfun token data for ${token}: ${err}`)
+    }
 
     let pools: {
         account: AccountInfo<Buffer>;
@@ -141,4 +174,39 @@ export async function getSolanaOptimalPool(connection: Connection, token: string
         }
     }
     return max;
+}
+
+export async function routeBuy(connection: Connection, buyer: string, token: string, value: number) {
+    let optimalPool = await getSolanaOptimalPool(connection, token);
+    if (!optimalPool) {
+        throw new Error(`No pool found for ${token}!`);
+    }
+    if (optimalPool.type === 'pumpfun') {
+        let slippageBasisPoints: bigint = 500n;
+        let mint = new PublicKey(token);
+        let pumpfunToken = new PumpfunToken(Keypair.generate());
+        let bondingCurveAccount = await pumpfunToken.getBondingCurveAccount(mint);
+        if (!bondingCurveAccount) {
+            throw new Error(`Bonding curve account not found: ${mint.toBase58()}`);
+        }
+
+        let solValue = BigInt(Math.floor(value * LAMPORTS_PER_SOL));
+        let buyAmount = bondingCurveAccount.getBuyPrice(solValue);
+        let solAmount = calculateWithSlippageBuy(solValue, slippageBasisPoints);
+
+        let globalAccount = await getGlobalAccount(connection);
+
+        let instructions = await pumpfunToken.getBuyInstructions(
+            new PublicKey(buyer),
+            new PublicKey(buyer),
+            mint,
+            globalAccount.feeRecipient,
+            buyAmount,
+            solAmount
+        );
+        return instructions;
+    } else {
+        let { instructions } = await buyRaydium(connection, new PublicKey(buyer), new PublicKey(buyer), value, token, optimalPool);
+        return instructions;
+    }
 }

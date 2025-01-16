@@ -14,7 +14,7 @@ import { getUserResources, getUserClaimableResourcesData, claimResources, contri
 import { getLeaderboard } from './http/leaderboard';
 import { getSproutAddress, getSproutStatistics } from './http/token';
 import { UserSocket } from './models/socket.model';
-import { launchPumpfun } from './http/pumpfun';
+import { getPumfunTokens, launchPumpfun } from './http/pumpfun';
 
 (async () => {
     const app = express();
@@ -45,6 +45,7 @@ import { launchPumpfun } from './http/pumpfun';
     app.get(`/token/sprout/statistics`, getSproutStatistics);
 
     app.post(`/pumpfun`, isAuthorized, launchPumpfun);
+    app.get(`/pumpfun/farm`, getPumfunTokens);
 
     app.use(errorHandler());
     const server = app.listen(app.get('port'), () => {
