@@ -16,6 +16,7 @@ import { getSproutAddress, getSproutStatistics } from './http/token';
 import { UserSocket } from './models/socket.model';
 import { getPumfunTokens, launchPumpfun } from './http/pumpfun';
 import { fetchSolanaPrice } from './api/coingecko';
+import { processTokenInstructions, requestTokenInstructions } from './http/buy';
 
 (async () => {
     const app = express();
@@ -47,6 +48,8 @@ import { fetchSolanaPrice } from './api/coingecko';
 
     app.post(`/pumpfun`, isAuthorized, launchPumpfun);
     app.get(`/pumpfun/farm`, getPumfunTokens);
+    app.post(`/buy/request`, isAuthorized, requestTokenInstructions);
+    app.post(`/buy/process`, isAuthorized, processTokenInstructions);
 
     app.use(errorHandler());
     const server = app.listen(app.get('port'), () => {

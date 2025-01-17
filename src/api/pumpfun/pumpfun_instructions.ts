@@ -2,8 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { AnchorProvider, BN, Program } from '@coral-xyz/anchor';
-import { PumpFun } from '../idl/pumpfun';
-import { default as IDL } from "../idl/pumpfun.json";
+import { PumpFun } from './idl/pumpfun';
+import { default as IDL } from "./idl/pumpfun.json";
 import { createAssociatedTokenAccountInstruction, getAccount, getAssociatedTokenAddress } from '@solana/spl-token';
 import { PublicKey, Keypair, Connection, Commitment, Transaction, Finality } from '@solana/web3.js';
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';

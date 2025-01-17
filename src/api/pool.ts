@@ -1,14 +1,26 @@
-import dotenv from 'dotenv';
+import dotenv, { config } from 'dotenv';
 dotenv.config();
 
 import { LIQUIDITY_STATE_LAYOUT_V4, Liquidity, LiquidityPoolKeys, LiquidityPoolKeysV4, MARKET_STATE_LAYOUT_V3, Market } from "@raydium-io/raydium-sdk";
-import { AccountInfo, Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { AccountInfo, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import { isFulfilled } from "../utils/utils";
 import { PumpfunToken } from './pumpfun/pumpfun_instructions';
 import { Keypair } from '@solana/web3.js';
 import { calculateWithSlippageBuy } from './pumpfun_builder';
 import { getGlobalAccount } from './pumpfun/globalAccount';
 import { buyRaydium } from './raydium/raydium_instructions';
+import { TransactionInstruction } from '@solana/web3.js';
+
+export const SOLANA_TIP_ACCOUNTS = [
+    "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
+    "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe",
+    "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
+    "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
+    "DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh",
+    "ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt",
+    "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
+    "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT"
+].map(x => new PublicKey(x));
 
 const RAYDIUM_LIQUIDITY_POOL_V4_ADDRESS = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
 
@@ -176,11 +188,13 @@ export async function getSolanaOptimalPool(connection: Connection, token: string
     return max;
 }
 
-export async function routeBuy(connection: Connection, buyer: string, token: string, value: number) {
+export async function routeBuy(connection: Connection, buyer: string, token: string, value: number, tip: number) {
     let optimalPool = await getSolanaOptimalPool(connection, token);
     if (!optimalPool) {
         throw new Error(`No pool found for ${token}!`);
     }
+
+    let buy_instructions: TransactionInstruction[] = [];
     if (optimalPool.type === 'pumpfun') {
         let slippageBasisPoints: bigint = 500n;
         let mint = new PublicKey(token);
@@ -204,9 +218,20 @@ export async function routeBuy(connection: Connection, buyer: string, token: str
             buyAmount,
             solAmount
         );
-        return instructions;
+        buy_instructions = instructions;
     } else {
         let { instructions } = await buyRaydium(connection, new PublicKey(buyer), new PublicKey(buyer), value, token, optimalPool);
-        return instructions;
+        buy_instructions = instructions;
     }
+
+    buy_instructions = [
+        ...buy_instructions,
+        SystemProgram.transfer({
+            fromPubkey: new PublicKey(buyer),
+            toPubkey: new PublicKey(SOLANA_TIP_ACCOUNTS[0]),
+            lamports: Math.floor(tip * LAMPORTS_PER_SOL),
+        })
+    ];
+
+    return buy_instructions
 }
