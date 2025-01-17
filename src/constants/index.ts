@@ -13,3 +13,5 @@ export const db_pool = new Pool({
     idleTimeoutMillis: 0,
     connectionTimeoutMillis: 0,
 });
+
+export let CACHED_SOL_PRICE = 0;

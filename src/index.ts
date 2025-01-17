@@ -15,6 +15,7 @@ import { getLeaderboard } from './http/leaderboard';
 import { getSproutAddress, getSproutStatistics } from './http/token';
 import { UserSocket } from './models/socket.model';
 import { getPumfunTokens, launchPumpfun } from './http/pumpfun';
+import { fetchSolanaPrice } from './api/coingecko';
 
 (async () => {
     const app = express();
@@ -51,7 +52,7 @@ import { getPumfunTokens, launchPumpfun } from './http/pumpfun';
     const server = app.listen(app.get('port'), () => {
         logDetails(`[INIT] App is running at http://localhost:${app.get('port')}`);
     });
-
+    await fetchSolanaPrice();
     io_instance.use(function (socket, next) {
         if (!isEmptyOrNull(socket.handshake.auth) && !isEmptyOrNull(socket.handshake.auth.token)) {
             const token = socket.handshake.auth.token;

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { CACHED_SOL_PRICE } from "../constants";
 
 export async function fetchSolanaPrice() {
     let url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=ethereum%2Cbitcoin%2Cbinancecoin%2Csolana&order=market_cap_desc&per_page=100&page=1&sparkline=false&locale=en`;
@@ -8,6 +9,7 @@ export async function fetchSolanaPrice() {
             let data = resp.data;
             const foundSolana = data.find(x => x.id === "solana");
             if (foundSolana) {
+                (CACHED_SOL_PRICE as number) = foundSolana.current_price;
                 return foundSolana.current_price;
             } else {
                 return 0;

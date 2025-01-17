@@ -3,12 +3,16 @@ dotenv.config();
 
 import { Request, Response } from 'express';
 import { build_response } from '../utils/http_helper';
-import { checkField, isEmptyOrNull } from '../utils/utils';
+import { checkField, isEmptyOrNull, isFulfilled } from '../utils/utils';
 import { fork } from 'node:child_process';
 import { PumpfunPayload } from '../api/pumpfun_builder';
 import io_instance from '../websocket';
 import { get_count_pumpfun_launched_contracts, get_pumpfun_launched_contracts } from '../db';
 import { getTokenData } from '../api/token_data';
+import { PumpfunToken } from '../api/pumpfun/pumpfun_instructions';
+import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { CACHED_SOL_PRICE } from '../constants';
 
 export const launchPumpfun = async (req: Request, res: Response) => {
     let id = res.locals['authorizedUser'].id;
@@ -109,6 +113,34 @@ export const getPumfunTokens = async (req: Request, res: Response) => {
                 return null
             }
         }).filter(x => !isEmptyOrNull(x));
+
+        let bondingCurveAccountReqs = (await Promise.allSettled(token_data.filter(x => isEmptyOrNull(x!.token.market_cap) || isEmptyOrNull(x!.token.price)).map(async (x) => {
+            let pumpfunToken = new PumpfunToken(Keypair.generate());
+            let bondingCurveAccount = await pumpfunToken.getBondingCurveAccount(new PublicKey(x!.token.address));
+            if (!bondingCurveAccount) {
+                throw new Error(`Bonding curve account not found: ${new PublicKey(x!.token.address).toBase58()}`);
+            }
+            return {
+                address: x!.token.address,
+                price: (Number.parseInt(bondingCurveAccount.getBuyOutPrice(BigInt(1 * 1e6), BigInt(0)).toString()) / LAMPORTS_PER_SOL) * CACHED_SOL_PRICE,
+                market_cap: (Number.parseInt(bondingCurveAccount.getMarketCapSOL().toString()) / LAMPORTS_PER_SOL) * CACHED_SOL_PRICE,
+            }
+        }))).filter(isFulfilled);
+
+        for (let bondingCurveAccountReq of bondingCurveAccountReqs) {
+            let idx = token_data.findIndex(data => data?.token.address === bondingCurveAccountReq.value.address);
+            if (idx >= 0) {
+                token_data[idx] = {
+                    ...token_data[idx]!,
+                    token: {
+                        ...token_data[idx]!.token,
+                        price: bondingCurveAccountReq.value.price,
+                        market_cap: bondingCurveAccountReq.value.market_cap
+                    }
+                }
+            }
+        }
+
         return res.status(200).json(build_response(true, {
             token_data,
             count,
