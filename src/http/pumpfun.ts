@@ -5,7 +5,7 @@ import { Request, Response } from 'express';
 import { build_response } from '../utils/http_helper';
 import { checkField, isEmptyOrNull, isFulfilled } from '../utils/utils';
 import { fork } from 'node:child_process';
-import { PumpfunPayload } from '../api/pumpfun_builder';
+import { PumpfunPayload } from '../api/scripts/build_launch_tx';
 import io_instance from '../websocket';
 import { get_count_pumpfun_launched_contracts, get_pumpfun_launched_contracts } from '../db';
 import { getTokenData } from '../api/token_data';
@@ -14,21 +14,44 @@ import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { CACHED_SOL_PRICE } from '../constants';
 
-export const launchPumpfun = async (req: Request, res: Response) => {
+export const requestPumpfunInstructions = async (req: Request, res: Response) => {
     let id = res.locals['authorizedUser'].id;
     try {
         io_instance.to(`room_${id}`).emit('pumpfun', {
             ok: true,
             message: `Validating token configuration...`
         });
-        const { name, symbol, description, image, telegram, website, twitter, private_key, tip, value }: PumpfunPayload = req.body;
+        const { name, symbol, description, image, telegram, website, twitter, public_key, tip, value }: PumpfunPayload = req.body;
         checkField(name, "Name is missing");
         checkField(symbol, "Symbol is missing");
         checkField(description, "Description is missing");
         checkField(image, "Image is missing");
-        checkField(private_key, "Private key is missing");
+        checkField(public_key, "Public key is missing");
         checkField(tip, "Private key is missing");
         checkField(value, "Private key is missing");
+
+
+        {
+            const regex = /^[A-Za-z0-9_]{1,15}$/;
+            if (!regex.test(twitter)) {
+                throw new Error("Invalid X name, it should be between 1 and 15 characters");
+            }
+        }
+
+        {
+            const regex = /^[a-zA-Z0-9_]{1,20}$/;
+            if (!regex.test(telegram)) {
+                throw new Error("Invalid telegram name, it should be between 1 and 15 characters");
+            }
+        }
+
+        {
+            const regex = /^(https?|ftp):\/\/([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;%=]*)?$/;
+            if (!regex.test(website)) {
+                throw new Error("Invalid website URL");
+            }
+        }
+
         let current_tip = +tip;
         let current_value = +value;
         if (isNaN(current_tip)) {
@@ -56,11 +79,11 @@ export const launchPumpfun = async (req: Request, res: Response) => {
             telegram,
             website,
             twitter,
-            private_key,
+            public_key,
             tip,
             value
         }
-        var child = fork('dist/api/pumpfun_builder.js');
+        var child = fork('dist/api/scripts/build_launch_tx.js');
         child.send(JSON.stringify(payload));
         child.on('data', async (data: any) => {
             console.log(data.toString());
@@ -71,7 +94,7 @@ export const launchPumpfun = async (req: Request, res: Response) => {
         });
 
         child.on('exit', async (code: any) => {
-            console.log(`Bundler exited ${code}`);
+            console.log(`Bundler instructions exited ${code}`);
         });
         io_instance.to(`room_${id}`).emit('pumpfun', {
             ok: true,
@@ -83,7 +106,48 @@ export const launchPumpfun = async (req: Request, res: Response) => {
     } catch (err) {
         io_instance.to(`room_${id}`).emit('pumpfun', {
             ok: false,
-            message: err as string
+            message: 'Something wrong happened'
+        });
+        return res.status(200).json(build_response(false, null, err as string));
+    }
+}
+
+export const processPumpfunInstructions = async (req: Request, res: Response) => {
+    let user_id = res.locals['authorizedUser'].id;
+    try {
+        let { id, address, name, symbol, instructions } = req.body;
+        checkField(id, "ID is missing");
+        checkField(address, "Address is missing");
+        checkField(name, "Name is missing");
+        checkField(symbol, "Symbol is missing");
+        checkField(instructions, "Transaction instructions are missing");
+        var child = fork('dist/api/scripts/send_jito_launch_bundle.js');
+        child.send(JSON.stringify({
+            id,
+            address,
+            name,
+            symbol,
+            instructions
+        }));
+
+        child.on('data', async (data: any) => {
+            console.log(data.toString());
+        });
+
+        child.on('message', async (data: string) => {
+            io_instance.to(`room_${user_id}`).emit('pumpfun', JSON.parse(data));
+        });
+
+        child.on('exit', async (code: any) => {
+            console.log(`Bundler processor exited ${code}`);
+        });
+        return res.status(200).json(build_response(true, {
+            message: `Processing launch of ${name} (${symbol})...`
+        }));
+    } catch (err) {
+        io_instance.to(`room_${user_id}`).emit('pumpfun', {
+            ok: false,
+            message: 'Something wrong happened',
         });
         return res.status(200).json(build_response(false, null, err as string));
     }

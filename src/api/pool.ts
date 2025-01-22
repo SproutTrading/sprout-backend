@@ -6,10 +6,13 @@ import { AccountInfo, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } f
 import { isFulfilled } from "../utils/utils";
 import { PumpfunToken } from './pumpfun/pumpfun_instructions';
 import { Keypair } from '@solana/web3.js';
-import { calculateWithSlippageBuy } from './pumpfun_builder';
 import { getGlobalAccount } from './pumpfun/globalAccount';
 import { buyRaydium } from './raydium/raydium_instructions';
 import { TransactionInstruction } from '@solana/web3.js';
+
+export const calculateWithSlippageBuy = (amount: bigint, basisPoints: bigint) => {
+    return amount + (amount * basisPoints) / 10000n;
+};
 
 export const SOLANA_TIP_ACCOUNTS = [
     "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",

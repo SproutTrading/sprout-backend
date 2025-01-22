@@ -9,7 +9,7 @@ import { VersionedTransaction } from '@solana/web3.js';
 
 (async () => {
     process.on('message', async (incoming: string) => {
-        let config: { total: number, symbol: string, instructions: Uint8Array<ArrayBufferLike> } = JSON.parse(incoming);
+        let config: { total: number, symbol: string, instructions: any } = JSON.parse(incoming);
         const keypair = Keypair.fromSecretKey(bs58.decode(process.env.JITO_KEYPAIR!));
         const jitoClient = searcherClient(process.env.JITO_ENDPOINT!, keypair);
         const versionedTx = VersionedTransaction.deserialize(config.instructions);
@@ -75,6 +75,6 @@ import { VersionedTransaction } from '@solana/web3.js';
                 message: `Failed to confirm transaction`
             }));
             process.exit(1);
-        }, 12 * 1000);
+        }, 30 * 1000);
     });
 })();

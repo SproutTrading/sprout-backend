@@ -207,27 +207,17 @@ export const updateSocials = async (req: Request, res: Response) => {
     try {
         let { twitter, telegram, github, discord } = req.body;
         let public_key = res.locals['authorizedUser'].public_key;
-        const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,100}$/;
         if (twitter) {
             twitter = twitter.trim();
-            if (!USERNAME_REGEX.test(twitter)) {
-                throw new Error("Invalid twitter name - only alphanumeric characters are allowed ranging between 3 and 100 characters");
-            }
         }
         if (telegram) {
             telegram = telegram.trim();
-            if (!USERNAME_REGEX.test(telegram)) {
-                throw new Error("Invalid telegram name - only alphanumeric characters are allowed ranging between 3 and 100 characters");
-            }
         }
         if (github) {
             github = github.trim();
         }
         if (discord) {
             discord = discord.trim();
-            if (!USERNAME_REGEX.test(discord)) {
-                throw new Error("Invalid discord name - only alphanumeric characters are allowed ranging between 3 and 100 characters");
-            }
         }
         let updated = await update_user_socials(public_key, twitter, telegram, discord, github);
         if (updated) {

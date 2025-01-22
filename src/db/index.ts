@@ -81,7 +81,7 @@ count(i.object_id) as contributions,
 from users u join users_inventory i on u.id = i.user_id 
 where i.contributed = true AND i.pumpfun_contract_id IS NULL
 group by i.user_id, public_key, display_name
-) left JOIN users_inventory ui on ui.id = object_id
+) AS users_leaderboard left JOIN users_inventory ui on ui.id = object_id
 order by contributions DESC, date_contributed ASC
 limit 50`;
     const result = await db_pool.query(query);
@@ -145,9 +145,9 @@ count(i.object_id) as contributions,
 from users u join users_inventory i on u.id = i.user_id 
 where i.contributed = true AND i.pumpfun_contract_id IS NULL
 group by i.user_id, public_key, display_name
-) JOIN users_inventory ui on ui.id = object_id
+) AS users_ranks_inner JOIN users_inventory ui on ui.id = object_id
 order by contributions DESC, date_contributed ASC
-) WHERE user_id = $1`
+) AS user_ranks WHERE user_id = $1`
     const values = [user_id];
     const result = await db_pool.query(query, values);
     return result.rows;

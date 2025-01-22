@@ -65,6 +65,21 @@ export class GlobalAccount {
             : this.initialRealTokenReserves;
     }
 
+    getBuyPrice(tokens: bigint): bigint {
+        const product_of_reserves = this.initialVirtualSolReserves * this.initialVirtualTokenReserves;
+        const new_virtual_token_reserves = this.initialVirtualTokenReserves - tokens;
+        const new_virtual_sol_reserves = product_of_reserves / new_virtual_token_reserves + 1n;
+        const amount_needed = new_virtual_sol_reserves > this.initialVirtualSolReserves ? new_virtual_sol_reserves - this.initialVirtualSolReserves : 0n;
+        return amount_needed > 0n ? amount_needed : 0n;
+    }
+
+    getBuyPriceSol(token_amount: bigint): bigint {
+        const final_token_amount = token_amount > this.initialRealTokenReserves ? this.initialRealTokenReserves : token_amount;
+        const sol_amount = this.getBuyPrice(final_token_amount);
+        return sol_amount
+    }
+
+
     public static fromBuffer(buffer: Buffer): GlobalAccount {
         const structure: Layout<GlobalAccount> = struct([
             u64("discriminator"),

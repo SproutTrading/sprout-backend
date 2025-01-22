@@ -80,7 +80,7 @@ export const processTokenInstructions = async (req: Request, res: Response) => {
         checkField(symbol, "Symbol is missing");
         checkField(instructions, "Transaction instructions are missing");
 
-        var child = fork('dist/api/scripts/send_jito_bundle.js');
+        var child = fork('dist/api/scripts/send_jito_buy_bundle.js');
         child.send(JSON.stringify({
             total,
             symbol,
@@ -104,7 +104,7 @@ export const processTokenInstructions = async (req: Request, res: Response) => {
     } catch (err) {
         io_instance.to(`room_${user_id}`).emit('buyTx', {
             pending: false,
-            message: err,
+            message: 'Something wrong happened',
             ok: false
         });
         logDetails(`Error processing token instructions: ${err}`);

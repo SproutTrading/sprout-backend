@@ -14,7 +14,7 @@ import { getUserResources, getUserClaimableResourcesData, claimResources, contri
 import { getLeaderboard } from './http/leaderboard';
 import { getSproutAddress, getSproutStatistics } from './http/token';
 import { UserSocket } from './models/socket.model';
-import { getPumfunTokens, launchPumpfun } from './http/pumpfun';
+import { getPumfunTokens, processPumpfunInstructions, requestPumpfunInstructions } from './http/pumpfun';
 import { fetchSolanaPrice } from './api/coingecko';
 import { processTokenInstructions, requestTokenInstructions } from './http/buy';
 
@@ -46,7 +46,8 @@ import { processTokenInstructions, requestTokenInstructions } from './http/buy';
     app.get(`/token/sprout/address`, getSproutAddress);
     app.get(`/token/sprout/statistics`, getSproutStatistics);
 
-    app.post(`/pumpfun`, isAuthorized, launchPumpfun);
+    app.post(`/pumpfun/request`, isAuthorized, requestPumpfunInstructions);
+    app.post(`/pumpfun/process`, isAuthorized, processPumpfunInstructions);
     app.get(`/pumpfun/farm`, getPumfunTokens);
     app.post(`/buy/request`, isAuthorized, requestTokenInstructions);
     app.post(`/buy/process`, isAuthorized, processTokenInstructions);
