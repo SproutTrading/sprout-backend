@@ -190,7 +190,7 @@ export const getResourcesEpochsData = async () => {
     let resources_epochs: { epoch: number, water: number, fertilizer: number, sunshine: number }[] = await get_resources_by_epoch();
     let start_epoch = +process.env.SOLANA_EPOCH!;
 
-    let resources_epochs_final: { epoch: number, water: number, fertilizer: number, sunshine: number, percentage: number, selected: boolean }[] = [];
+    let resources_epochs_final: { epoch: number, water: number, fertilizer: number, sunshine: number, percentage: number }[] = [];
     for (let i = start_epoch; i < start_epoch + 3; i++) {
         let found = resources_epochs.find(x => x.epoch === i);
         let data = {
@@ -198,8 +198,7 @@ export const getResourcesEpochsData = async () => {
             water: 0,
             fertilizer: 0,
             sunshine: 0,
-            percentage: 0,
-            selected: i === epoch
+            percentage: 0
         };
         if (found) {
             data.water = +found.water;
