@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { Request, Response } from 'express';
-import { get_user_resources, get_user_claims, insert_user_claim, insert_user_inventory, get_first_resource, update_resource, get_resources_by_epoch, get_user_rank, get_pumpfun_contract_by_id } from '../db';
+import { get_user_resources, get_user_claims, insert_user_claim, insert_user_inventory, get_first_resource, update_resource, get_resources_by_epoch, get_user_rank, get_pumpfun_contract_by_id, get_pumpfun_launched_contract } from '../db';
 import { GameObjects } from '../models/enums';
 import { build_response } from '../utils/http_helper';
 import { checkField, getTimeWithOffset, logDetails } from '../utils/utils';
@@ -157,13 +157,18 @@ export const contributeResources = async (req: Request, res: Response) => {
             if (!updated) {
                 throw new Error(`Failed to update item`);
             }
+            let resourceUpdated;
+            if (updated && tokenId) {
+                resourceUpdated = await get_pumpfun_launched_contract(tokenId);
+            }
 
             {
                 let resourcesEpochsData = await getResourcesEpochsData();
                 let leaderboardData = await getLeaderboardData();
                 io_instance.emit('updateStatistics', {
                     epochs: resourcesEpochsData.epochs,
-                    leaderboard: leaderboardData
+                    leaderboard: leaderboardData,
+                    resourceUpdated
                 })
             }
             return res.status(200).json(build_response(true, {

@@ -211,3 +211,21 @@ LIMIT $2 OFFSET $1`;
     const result = await db_pool.query(query, [offset, limit]);
     return result.rows;
 }
+export async function get_pumpfun_launched_contract(id: number) {
+    const query = `SELECT 
+	pc.id, 
+	public_key,
+	count(CASE WHEN ui.object_id = 1 then 1 end) AS water,
+	count(CASE WHEN ui.object_id = 2 then 1 end) AS fertilizer,
+	count(CASE WHEN ui.object_id = 3 then 1 end) AS sunshine,
+	count(ui.object_id) total,
+	MIN(date_contributed) as date_contributed
+FROM pumpfun_contracts pc
+LEFT JOIN users_inventory ui 
+ON pc.id = ui.pumpfun_contract_id
+WHERE launched = true AND id = $1
+GROUP BY pc.id
+ORDER BY total DESC, date_contributed ASC, pc.id ASC`;
+    const result = await db_pool.query(query, [id]);
+    return result && result.rows.length > 0 ? result.rows[0] : null
+}
