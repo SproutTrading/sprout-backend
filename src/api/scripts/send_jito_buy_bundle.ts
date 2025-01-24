@@ -26,13 +26,14 @@ import { VersionedTransaction } from '@solana/web3.js';
         }
 
         let checked = false;
+        const signature = bs58.encode(versionedTx.signatures[0]);
         jitoClient.onBundleResult(
             async result => {
                 if (!checked && (result.accepted || result.processed)) {
                     process.send!(JSON.stringify({
                         pending: false,
                         ok: true,
-                        message: `Successfully purchased ${config.symbol} for ${config.total} SOL total! Transaction confirmed.`
+                        message: `Successfully purchased ${config.symbol} for ${config.total} SOL total! <a class="font-semibold" style="text-decoration: underline;" href="https://solscan.io/tx/${signature}" target="_blank">Transaction confirmed</a>.`
                     }));
 
                     checked = true;
@@ -51,7 +52,6 @@ import { VersionedTransaction } from '@solana/web3.js';
          * Jito client might disconnect suddenly due to network outage
          * Added manual checking by looping every 400ms
          */
-        const signature = bs58.encode(versionedTx.signatures[0]);
         const connection = new Connection(process.env.NODE_SOLANA_HTTP!, "confirmed");
         setInterval(async () => {
             let tx = await connection.getParsedTransaction(signature, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' });
@@ -59,7 +59,7 @@ import { VersionedTransaction } from '@solana/web3.js';
                 process.send!(JSON.stringify({
                     pending: false,
                     ok: true,
-                    message: `Successfully purchased ${config.symbol} for ${config.total} SOL total! Transaction confirmed.`
+                    message: `Successfully purchased ${config.symbol} for ${config.total} SOL total! <a class="font-semibold" style="text-decoration: underline;" href="https://solscan.io/tx/${signature}" target="_blank">Transaction confirmed</a>.`
                 }));
                 process.exit(1);
             }
