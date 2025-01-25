@@ -55,7 +55,8 @@ export const registerUser = async (req: Request, res: Response) => {
         if (!PublicKey.isOnCurve(publicKey.toBytes())) {
             throw Error("Address is invalid");
         }
-        const messageBytes = decodeUTF8(nonce);
+        let messageToSign = `Signing this message will register you a gardener ID! ${nonce}`;
+        const messageBytes = decodeUTF8(messageToSign);
         const result = nacl.sign.detached.verify(
             messageBytes,
             base58.decode(base58.encode(signature as number[])),
@@ -111,7 +112,8 @@ export const loginUser = async (req: Request, res: Response) => {
         if (!PublicKey.isOnCurve(publicKey.toBytes())) {
             throw Error("Address is invalid");
         }
-        const messageBytes = decodeUTF8(nonce);
+        let messageToSign = `Welcome to Sprout.trading. Sign this message to verify your ownership! ${nonce}`;
+        const messageBytes = decodeUTF8(messageToSign);
         const result = nacl.sign.detached.verify(
             messageBytes,
             base58.decode(base58.encode(signature as number[])),
