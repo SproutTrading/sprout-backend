@@ -10,8 +10,10 @@ import { buyRaydium } from './../raydium/raydium_instructions';
 import { getGlobalAccount } from './../pumpfun/globalAccount';
 import { fetchSolanaPrice } from './../coingecko';
 import { get_pumpfun_contract, update_pumpfun_contract_user } from '../../db';
+import { fork } from 'node:child_process';
 
 export type PumpfunPayload = {
+    launchMethod: string,
     id: number,
     name: string,
     symbol: string,
@@ -20,9 +22,10 @@ export type PumpfunPayload = {
     telegram: string,
     website: string,
     twitter: string,
-    public_key: string,
     tip: string,
-    value: string
+    value: string,
+    public_key: string | null,
+    private_key: string | null,
 }
 
 export const calculateWithSlippageBuy = (amount: bigint, basisPoints: bigint) => {
@@ -72,7 +75,12 @@ export async function uploadToPumpfun(config: PumpfunPayload): Promise<PumpfunIp
         let pumpfunResponse = await uploadToPumpfun(config);
         let metadata_uri = pumpfunResponse.metadataUri;
 
-        const deployerPublicKey = new PublicKey(config.public_key);
+        let deployerPublicKey: PublicKey;
+        if (config.launchMethod === 'wallet') {
+            deployerPublicKey = new PublicKey(config.public_key!);
+        } else {
+            deployerPublicKey = Keypair.fromSecretKey(bs58.decode(config.private_key!)).publicKey;
+        }
 
         let createTokenInstructions: TransactionInstruction[] = [];
         let buySproutTokenInstructions = await buyRaydium(connection, deployerPublicKey, sproutCollector.publicKey, +(+process.env.SPROUT_BUYS_USD! / price).toFixed(9), process.env.TOKEN_ADDRESS!);
@@ -170,19 +178,55 @@ export async function uploadToPumpfun(config: PumpfunPayload): Promise<PumpfunIp
         );
         buySproutTx.sign([sproutCollector]);
 
-        process.send!(JSON.stringify({
-            ok: true,
-            message: `Deploying ${config.name}..`,
-            id: pumpfun_contract.id,
-            address: mint.publicKey.toString(),
-            name: config.name,
-            symbol: config.symbol,
-            instructions: [
-                Array.from(devTx.serialize()),
-                Array.from(buySproutTx.serialize())
-            ]
-        }));
+        if (config.launchMethod === 'wallet') {
+            process.send!(JSON.stringify({
+                ok: true,
+                message: `Deploying ${config.name}..`,
+                id: pumpfun_contract.id,
+                address: mint.publicKey.toString(),
+                name: config.name,
+                symbol: config.symbol,
+                instructions: [
+                    Array.from(devTx.serialize()),
+                    Array.from(buySproutTx.serialize())
+                ]
+            }));
+            process.exit(1);
+        } else {
+            let deployerKp = Keypair.fromSecretKey(bs58.decode(config.private_key!));
+            devTx.sign([deployerKp]);
+            buySproutTx.sign([deployerKp]);
+            process.send!(JSON.stringify({
+                ok: true,
+                message: `Deploying ${config.name}..`,
+                id: pumpfun_contract.id,
+                address: mint.publicKey.toString(),
+                name: config.name,
+                symbol: config.symbol
+            }));
 
-        process.exit(1);
+            var child = fork('dist/api/scripts/send_jito_launch_bundle.js');
+            child.send(JSON.stringify({
+                id: pumpfun_contract.id,
+                address: mint.publicKey.toString(),
+                name: config.name,
+                symbol: config.symbol,
+                instructions: [
+                    Array.from(devTx.serialize()),
+                    Array.from(buySproutTx.serialize())
+                ]
+            }));
+
+            child.on('data', async (data: any) => {
+                console.log(data.toString());
+            });
+            child.on('message', async (data: string) => {
+                process.send!(data);
+            });
+            child.on('exit', async (code: any) => {
+                console.log(`Jito launch bundle (build launch) processor exited ${code}`);
+                process.exit(1);
+            });
+        }
     });
 })();

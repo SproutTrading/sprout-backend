@@ -21,15 +21,24 @@ export const requestPumpfunInstructions = async (req: Request, res: Response) =>
             ok: true,
             message: `Validating token configuration...`
         });
-        const { name, symbol, description, image, telegram, website, twitter, public_key, tip, value }: PumpfunPayload = req.body;
+        const { launchMethod, name, symbol, description, image, telegram, website, twitter, tip, value, public_key, private_key }: PumpfunPayload = req.body;
+        checkField(launchMethod, "Launch method is missing");
         checkField(name, "Name is missing");
         checkField(symbol, "Symbol is missing");
         checkField(description, "Description is missing");
         checkField(image, "Image is missing");
-        checkField(public_key, "Public key is missing");
         checkField(tip, "Private key is missing");
         checkField(value, "Private key is missing");
-
+        if (launchMethod === 'wallet') {
+            checkField(public_key!, "Public key is missing");
+        } else if (launchMethod === 'privateKey') {
+            checkField(private_key!, "Private key is missing");
+            if (!(private_key!.length === 64 || private_key!.length === 88)) {
+                checkField(private_key!, "Invalid private key");
+            }
+        } else {
+            checkField(value, "Incorrect launch method");
+        }
 
         {
             const regex = /^[A-Za-z0-9_]{1,15}$/;
@@ -71,6 +80,7 @@ export const requestPumpfunInstructions = async (req: Request, res: Response) =>
         }
 
         let payload: PumpfunPayload = {
+            launchMethod,
             id,
             name,
             symbol,
@@ -79,9 +89,10 @@ export const requestPumpfunInstructions = async (req: Request, res: Response) =>
             telegram,
             website,
             twitter,
-            public_key,
             tip,
-            value
+            value,
+            public_key,
+            private_key
         }
         var child = fork('dist/api/scripts/build_launch_tx.js');
         child.send(JSON.stringify(payload));
